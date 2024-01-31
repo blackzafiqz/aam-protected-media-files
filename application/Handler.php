@@ -121,8 +121,10 @@ class Handler
         \AAM_Service_Uri::getInstance()->authorizeUri('/' . $this->request);
 
         $media = $this->findMedia();
+        $user = wp_get_current_user();
         $this->getFilePermission($this->_getFileFullpath());
-        if (in_array('warga', (array) $user->roles))
+        //if (in_array('warga', (array) $user->roles))
+        if ($this->getFilePermission($this->_getFileFullpath()))
         {
             $this->_outputFile($this->_getFileFullpath());
         }
@@ -131,16 +133,35 @@ class Handler
             http_response_code(401);
             exit;
         }
-        
     }
     /**
      * @var string $filename
+     * @global WPDB $wpdb
      * @return boolean
      */
     private function getFilePermission($filename)
     {
+        global $wpdb;
         $user = wp_get_current_user();
-        error_log($filename);
+
+        $filename = basename($filename);
+
+        // // fetch post id from filename
+        $post_id = attachment_url_to_postid('https://' . $this->getFromServer('HTTP_HOST') . $this->getFromServer('REQUEST_URI'));
+
+        if ($post_id == 0)
+        {
+            return true;
+        }
+
+        if (get_post($post_id)->post_content != 'internal')
+        {
+            return true;
+        }
+        if (get_post($post_id)->post_content == 'internal' && is_user_logged_in())
+        {
+            return true;
+        }
         return false;
     }
     /**
