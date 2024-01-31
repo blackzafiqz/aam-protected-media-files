@@ -71,17 +71,22 @@ class Handler
     {
         $media = $this->getFromQuery('aam-media');
 
-        if (is_numeric($media)) { // Redirecting with aam-media=1 query param
+        if (is_numeric($media))
+        { // Redirecting with aam-media=1 query param
             $request = $this->getFromServer('REQUEST_URI');
-        } else { // Otherwise, this is most likely Nginx redirect rule
+        }
+        else
+        { // Otherwise, this is most likely Nginx redirect rule
             $request = $media;
         }
 
         // Hooking into URI Access Service
-        add_filter('aam_uri_match_filter', function($match, $uri, $s) {
+        add_filter('aam_uri_match_filter', function ($match, $uri, $s)
+        {
             $media = $this->getFromQuery('aam-media');
 
-            if (empty($match) && !empty($media)) {
+            if (empty($match) && !empty($media))
+            {
                 $match = ($uri === $media);
             }
 
@@ -116,28 +121,28 @@ class Handler
         \AAM_Service_Uri::getInstance()->authorizeUri('/' . $this->request);
 
         $media = $this->findMedia();
-
-        if ($media === null) { // File is not part of the Media library
+        $this->getFilePermission($this->_getFileFullpath());
+        if (in_array('warga', (array) $user->roles))
+        {
             $this->_outputFile($this->_getFileFullpath());
-        } else {
-            if ($media->is('restricted')) {
-                if (\AAM::api()->getConfig(
-                    'addon.protected-media-files.settings.deniedRedirect', false
-                )) {
-                    wp_die(
-                        'Access Denied',
-                        'aam_access_denied',
-                        array('exit' => true)
-                    );
-                } else {
-                    http_response_code(401); exit;
-                }
-            } else {
-                $this->_outputFile($this->_getFileFullpath());
-            }
         }
+        else
+        {
+            http_response_code(401);
+            exit;
+        }
+        
     }
-
+    /**
+     * @var string $filename
+     * @return boolean
+     */
+    private function getFilePermission($filename)
+    {
+        $user = wp_get_current_user();
+        error_log($filename);
+        return false;
+    }
     /**
      * Find file based on the URI
      *
@@ -183,7 +188,8 @@ class Handler
             )
         );
 
-        if (empty($id)) { // Try to find the image by GUID
+        if (empty($id))
+        { // Try to find the image by GUID
             $id = $wpdb->get_var(
                 $wpdb->prepare(
                     "SELECT ID FROM {$wpdb->posts} WHERE guid LIKE %s",
@@ -193,14 +199,20 @@ class Handler
         }
 
         // Allow other add-ons to hook into the media search if none is found
-        if (empty($id)) {
+        if (empty($id))
+        {
             $id = apply_filters(
-                'aam_find_media_id_filter', $id, $relpath_base, $relpath_full
+                'aam_find_media_id_filter',
+                $id,
+                $relpath_base,
+                $relpath_full
             );
         }
 
         return ($id ? \AAM::getUser()->getObject(
-            \AAM_Core_Object_Post::OBJECT_TYPE, $id) : null
+            \AAM_Core_Object_Post::OBJECT_TYPE,
+            $id
+        ) : null
         );
     }
 
@@ -222,9 +234,12 @@ class Handler
         // Get the sub dir path if website is located in subdirectory
         $sub_folder = ltrim(dirname($this->getFromServer('PHP_SELF')), '/');
 
-        if (strpos($this->request, $sub_folder . '/') === 0) {
+        if (strpos($this->request, $sub_folder . '/') === 0)
+        {
             $request = substr($this->request, strlen($sub_folder) + 1);
-        } else {
+        }
+        else
+        {
             $request = $this->request;
         }
 
@@ -258,11 +273,16 @@ class Handler
     {
         $filename = realpath(urldecode($filename));
 
-        if ($this->_isAllowed(realpath($filename))) {
-            if (empty($mime)) {
-                if (function_exists('mime_content_type')) {
+        if ($this->_isAllowed(realpath($filename)))
+        {
+            if (empty($mime))
+            {
+                if (function_exists('mime_content_type'))
+                {
                     $mime = mime_content_type($filename);
-                } else {
+                }
+                else
+                {
                     $mime = 'application/octet-stream';
                 }
             }
@@ -272,19 +292,22 @@ class Handler
 
             // Calculate etag
             $last_modified = gmdate('D, d M Y H:i:s', filemtime($filename));
-            $etag = '"' . md5( $last_modified ) . '"';
+            $etag = '"' . md5($last_modified) . '"';
 
             header("Last-Modified: $last_modified GMT");
             header("ETag: {$etag}");
             header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 100000000) . ' GMT');
 
-            if (defined('WP_DEBUG') && WP_DEBUG) {
+            if (defined('WP_DEBUG') && WP_DEBUG)
+            {
                 header('X-Served-By: AAM Protected Media Files');
             }
 
             // Finally read the file
             readfile($filename);
-        } else {
+        }
+        else
+        {
             http_response_code(403);
         }
 
@@ -314,15 +337,19 @@ class Handler
         $location   = wp_get_upload_dir();
 
         // Get upload directory attributes
-        if (!empty($location['basedir'])) {
+        if (!empty($location['basedir']))
+        {
             $upload_dir = $location['basedir'];
-        } else {
+        }
+        else
+        {
             $upload_dir = WP_CONTENT_DIR . '/uploads';
         }
 
         // If file has invalid mime type, then do not take it into consideration.
         // There is no way to define access to this file anyway
-        if (isset($type_check['ext']) && $type_check['ext'] !== false) {
+        if (isset($type_check['ext']) && $type_check['ext'] !== false)
+        {
             // Check if file is withing uploads directory
             $response = (strpos($filename, realpath($upload_dir)) !== false);
         }
@@ -351,7 +378,8 @@ class Handler
     {
         $get = filter_input(INPUT_GET, $param, $filter, $options);
 
-        if (is_null($get)) {
+        if (is_null($get))
+        {
             $get = filter_var($this->readFromArray($_GET, $param), $filter, $options);
         }
 
@@ -378,9 +406,12 @@ class Handler
         $var = filter_input(INPUT_SERVER, $param, $filter, $options);
 
         // Cover the unexpected server issues (e.g. FastCGI may cause unexpected null)
-        if (empty($var)) {
+        if (empty($var))
+        {
             $var = filter_var(
-                $this->readFromArray($_SERVER, $param), $filter, $options
+                $this->readFromArray($_SERVER, $param),
+                $filter,
+                $options
             );
         }
 
@@ -404,15 +435,22 @@ class Handler
     {
         $value = $default;
 
-        if (is_null($param)) {
+        if (is_null($param))
+        {
             $value = $array;
-        } else {
+        }
+        else
+        {
             $chunks = explode('.', $param);
             $value = $array;
-            foreach ($chunks as $chunk) {
-                if (isset($value[$chunk])) {
+            foreach ($chunks as $chunk)
+            {
+                if (isset($value[$chunk]))
+                {
                     $value = $value[$chunk];
-                } else {
+                }
+                else
+                {
                     $value = $default;
                     break;
                 }
@@ -432,11 +470,11 @@ class Handler
      */
     public static function bootstrap()
     {
-        if (is_null(self::$_instance)) {
+        if (is_null(self::$_instance))
+        {
             self::$_instance = new self;
         }
 
         return self::$_instance;
     }
-
 }
