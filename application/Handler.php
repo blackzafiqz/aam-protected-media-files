@@ -120,8 +120,6 @@ class Handler
         // First, let's check if URI is restricted
         \AAM_Service_Uri::getInstance()->authorizeUri('/' . $this->request);
 
-        $media = $this->findMedia();
-        $user = wp_get_current_user();
         $this->getFilePermission($this->_getFileFullpath());
         //if (in_array('warga', (array) $user->roles))
         if ($this->getFilePermission($this->_getFileFullpath()))
@@ -149,20 +147,12 @@ class Handler
         // // fetch post id from filename
         $post_id = attachment_url_to_postid('https://' . $this->getFromServer('HTTP_HOST') . $this->getFromServer('REQUEST_URI'));
 
-        if ($post_id == 0)
-        {
-            return true;
-        }
 
-        if (get_post($post_id)->post_content != 'internal')
+        if (get_post($post_id)->post_content!=null && get_post($post_id)->post_content == 'internal' && !is_user_logged_in())
         {
-            return true;
+            return false;
         }
-        if (get_post($post_id)->post_content == 'internal' && is_user_logged_in())
-        {
-            return true;
-        }
-        return false;
+        return true;
     }
     /**
      * Find file based on the URI
